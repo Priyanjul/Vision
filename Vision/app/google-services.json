@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "898264886374",
+    "firebase_url": "https://vision-73a7b.firebaseio.com",
+    "project_id": "vision-73a7b",
+    "storage_bucket": "vision-73a7b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:898264886374:android:f12502bd65f5bcbb",
+        "android_client_info": {
+          "package_name": "com.example.priyanjul.vision"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "898264886374-ekf8640vgsfpm0s9f865jo0i21nejq52.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6Tm9xk8KboWhta_1QOZ1Yz_DS8M4Syf0"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
