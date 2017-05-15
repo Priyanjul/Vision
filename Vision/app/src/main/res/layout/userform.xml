@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <EditText
+        android:id="@+id/e1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="99dp"
+        android:ems="10"
+        android:hint="Enter Label 1"
+        android:inputType="textPersonName" />
+
+    <EditText
+        android:id="@+id/e2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignStart="@+id/e1"
+        android:layout_below="@+id/e1"
+        android:layout_marginTop="24dp"
+        android:ems="10"
+        android:hint="Enter Label 2"
+        android:inputType="textPersonName" />
+
+    <EditText
+        android:id="@+id/e3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/e2"
+        android:layout_below="@+id/e2"
+        android:layout_marginTop="18dp"
+        android:ems="10"
+        android:hint="Enter Label 3"
+        android:inputType="textPersonName" />
+
+    <EditText
+        android:id="@+id/e4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/e3"
+        android:layout_below="@+id/e3"
+        android:layout_marginTop="24dp"
+        android:ems="10"
+        android:hint="Enter Label 3"
+        android:inputType="textPersonName" />
+
+    <EditText
+        android:id="@+id/e5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/e4"
+        android:layout_below="@+id/e4"
+        android:layout_marginTop="24dp"
+        android:ems="10"
+        android:hint="Enter Label 4"
+        android:inputType="textPersonName" />
+
+    <TextView
+        android:id="@+id/tv"
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:fontFamily="serif"
+        android:text="Enter Labels"
+        android:textSize="20sp"
+        tools:text="Enter Labels"
+        android:layout_marginTop="28dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignEnd="@+id/e1"
+        android:layout_alignStart="@+id/e1" />
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="33dp"
+        android:background="#a90e4a"
+        android:textColor="#ffffff"
+        android:elevation="1dp"
+        android:text="Upload"
+        android:layout_below="@+id/e5"
+        android:layout_centerHorizontal="true" />
+</RelativeLayout>

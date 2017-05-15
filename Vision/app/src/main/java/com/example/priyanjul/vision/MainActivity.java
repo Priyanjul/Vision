@@ -3,6 +3,7 @@ package com.example.priyanjul.vision;
 import android.Manifest;
 import android.accounts.Account;
 import android.accounts.AccountManager;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,9 +12,13 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -27,6 +32,8 @@ import android.widget.Toast;
 
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.common.AccountPicker;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
@@ -43,17 +50,24 @@ import com.google.api.services.vision.v1.model.Image;
 import com.google.api.services.vision.v1.model.LocationInfo;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.OnProgressListener;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 
 import static com.example.priyanjul.vision.R.id.info;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static String accessToken;
     static final int REQUEST_GALLERY_IMAGE = 10;
     static final int REQUEST_IMAGE_CAPTURE = 1;
@@ -63,20 +77,45 @@ public class MainActivity extends AppCompatActivity {
     private final String LOG_TAG = "MainActivity";
     private ImageView selectedImage;
     private TextView resultTextView;
+    private TextView coord;
     Account mAccount;
-    public String name="Labels:";
-    Button submit;
+    public String name="";
+    public double longit;
+    public double latit;
+    private LocationManager locationManager;
+    private LocationListener locationListener;
+    private ProgressDialog dialog;
+    private Button edit;
+    private Button upload;
+    private Uri filepath;
+    //firebase objects
+    private StorageReference storageReference;
     private DatabaseReference mDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        dialog = new ProgressDialog(MainActivity.this);
+        upload = (Button)findViewById(R.id.upload);
+        edit = (Button)findViewById(R.id.edit);
+        upload.setVisibility(View.GONE);
+        edit.setVisibility(View.GONE);
+
+        mDatabase = FirebaseDatabase.getInstance().getReference();
+
+        upload.setOnClickListener(this);
+        edit.setOnClickListener(this);
+
         Button selectImageButton = (Button) findViewById(R.id
                 .select_image_button);
-        submit = (Button)findViewById(R.id.submit);
+        //submit = (Button)findViewById(R.id.submit);
         selectedImage = (ImageView) findViewById(R.id.selected_image);
         resultTextView = (TextView) findViewById(R.id.result);
+        coord = (TextView) findViewById(R.id.coord);
+
+
 
         selectImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,14 +125,67 @@ public class MainActivity extends AppCompatActivity {
                         REQUEST_PERMISSIONS);
             }
         });
-        mDatabase = FirebaseDatabase.getInstance().getReference();
+        //mDatabase = FirebaseDatabase.getInstance().getReference();
 
-        submit.setOnClickListener(new View.OnClickListener(){
+       /* submit.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
                 mDatabase.child("User 01").setValue("hello");
             }
-        });
+        });*/
+
+        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        locationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                Toast.makeText(getApplicationContext(), "location is being updated", Toast.LENGTH_LONG).show();
+
+                coord.setText("\nLATITUDE : "+location.getLongitude()+" LONGITUDE : "+location.getLatitude());
+                longit = location.getLongitude();
+                latit = location.getLatitude();
+
+                coord.setVisibility(View.GONE);
+
+                locationManager.removeUpdates(locationListener);
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+                Toast.makeText(getApplicationContext(), "Gps not connected", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                startActivity(intent);
+            }
+        };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.INTERNET
+                }, 10 );
+
+                return;
+            }
+            else{
+                configureButton();
+            }
+        }else{
+            configureButton();
+        }
+
+
 
 
     }
@@ -115,6 +207,54 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+   /* private void saveImage(Bitmap finalBitmap) {
+
+        String root = Environment.getExternalStorageDirectory().toString();
+        File myDir = new File(root + "/saved_images");
+        myDir.mkdirs();
+        Random generator = new Random();
+        int n = 10000;
+        n = generator.nextInt(n);
+        String fname = "Image-"+ n +".jpg";
+        File file = new File (myDir, fname);
+        if (file.exists ())
+            file.delete ();
+        try {
+            FileOutputStream out = new FileOutputStream(file);
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
+            out.flush();
+            out.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Tell the media scanner about the new file so that it is
+        // immediately available to the user.
+        MediaScannerConnection.scanFile(this, new String[] { file.toString() }, null,
+                new MediaScannerConnection.OnScanCompletedListener() {
+                    public void onScanCompleted(String path, Uri uri) {
+                        Log.i("ExternalStorage", "Scanned " + path + ":");
+                        Log.i("ExternalStorage", "-> uri=" + uri);
+                    }
+                });
+        try {
+            // Use the compress method on the Bitmap object to write image to
+            // the OutputStream
+            FileOutputStream fos = openFileOutput("desiredFilename.png", Context.MODE_PRIVATE);
+
+            // Writing the bitmap to the output stream
+            finalBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            fos.close();
+
+            //return true;
+        } catch (Exception e) {
+            Log.e("saveToInternalStorage()", e.getMessage());
+            //return false;
+        }
+    }*/
+
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
@@ -126,6 +266,10 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     Toast.makeText(MainActivity.this, "Permission Denied!", Toast.LENGTH_SHORT).show();
                 }
+            case 10:
+                if(grantResults.length>0 && grantResults[0]==PackageManager.PERMISSION_GRANTED)
+                    configureButton();
+                return;
         }
     }
 
@@ -134,13 +278,17 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK && data != null) {
             Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+            //filepath = data.getData();
             Bitmap photo = resizeBitmap(bitmap);
+            //saveImage(photo);
+            //filepath = data.getData();
             try {
                 callCloudVision(photo);
             } catch (IOException e) {
                 Log.e(LOG_TAG, e.getMessage());
             }
             selectedImage.setImageBitmap(photo);
+
         } else if (requestCode == REQUEST_CODE_PICK_ACCOUNT) {
             if (resultCode == RESULT_OK) {
                 String email = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
@@ -184,7 +332,9 @@ public class MainActivity extends AppCompatActivity {
     }*/
 
     private void callCloudVision(final Bitmap bitmap) throws IOException {
-        resultTextView.setText("Retrieving results from cloud");
+        //resultTextView.setText("Retrieving results from cloud");
+        dialog.setMessage("Retrieving results from cloud");
+        dialog.show();
 
         new AsyncTask<Object, Void, String>() {
             @Override
@@ -243,7 +393,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
             protected void onPostExecute(String result) {
+                dialog.dismiss();
+                coord.setVisibility(View.VISIBLE);
                 resultTextView.setText(result);
+                upload.setVisibility(View.VISIBLE);
+                edit.setVisibility(View.VISIBLE);
+
             }
         }.execute();
     }
@@ -353,4 +508,86 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+    private void configureButton() {
+                //Toast.makeText(getApplicationContext(), "Button Clicked", Toast.LENGTH_LONG).show();
+                try {
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0,0, locationListener);
+                    //locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0,0, locationListener);
+                }catch (SecurityException e){
+                    e.printStackTrace();
+                }
+
+    }
+
+    /*private void uploadFile() {
+        //checking if file is available
+        if (filepath != null) {
+            //displaying progress dialog while image is uploading
+            final ProgressDialog progressDialog = new ProgressDialog(this);
+            progressDialog.setTitle("Uploading");
+            progressDialog.show();
+
+            //getting the storage reference
+            StorageReference sRef = storageReference.child(Constants.STORAGE_PATH_UPLOADS + System.currentTimeMillis());
+            //adding the file to reference
+            sRef.putFile(filepath)
+                    .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                            //dismissing the progress dialog
+                            progressDialog.dismiss();
+
+                            //displaying success toast
+                            Toast.makeText(getApplicationContext(), "File Uploaded ", Toast.LENGTH_LONG).show();
+
+                            //creating the upload object to store uploaded image details
+                            @SuppressWarnings("VisibleForTests")Upload upload = new Upload(name, taskSnapshot.getDownloadUrl().toString());
+                            //adding an upload to firebase database
+                            String uploadId = mDatabase.push().getKey();
+                            mDatabase.child(uploadId).setValue(upload);
+                        }
+                    }).addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception exception) {
+                    progressDialog.dismiss();
+                    Toast.makeText(getApplicationContext(), exception.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            }).addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
+                    //displaying the upload progress
+                    @SuppressWarnings("VisibleForTests") double progress = (100.0 * taskSnapshot.getBytesTransferred()) / taskSnapshot.getTotalByteCount();
+                    progressDialog.setMessage("Uploaded " + ((int) progress) + "%...");
+                }
+            });
+        } else {
+
+            Toast.makeText(getApplicationContext(), "null file path", Toast.LENGTH_LONG).show();
+            //display an error if no file is selected
+            }
+    }*/
+
+
+    private void uploadFile()
+    {
+        HashMap<String, String> dataMap= new HashMap<String, String >();
+        dataMap.put("Co-ordinates",Double.toString(longit)+" & "+Double.toString(latit));
+        dataMap.put("Labels",name);
+
+        mDatabase.push().setValue(dataMap);
+        Toast.makeText(getApplicationContext(), "Labels & Co-ordinates have been successfully uploaded !", Toast.LENGTH_SHORT).show();
+    }
+
+
+    @Override
+    public void onClick(View v) {
+        if (v == upload) {
+            uploadFile();
+        } else if (v == edit) {
+            Intent intent = new Intent(MainActivity.this,EditActivity.class);
+            intent.putExtra("coord",Double.toString(longit)+" & "+Double.toString(latit));
+            startActivity(intent);
+
+        }
+    }
 }
